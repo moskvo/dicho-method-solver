@@ -37,7 +37,7 @@ node_t* optimal_dichotomic_tree ( const task_t *task){
     pl++;
     p->lnode->length = 1;
     p->lnode->hnode = p;
-    
+
     p->rnode = (p+2);
     p->rnode->hnode = p;
 
@@ -157,8 +157,9 @@ void dicho_tree_notrecursive(node_t *head, const int size, item_t *items){
 
 /*  funcs for solving */
 
-void notrecursive_treesolver ( node_t* root, knint cons ){
-  node_t* runner = root;
+node_list_t* notrecursive_treesolver ( node_t* root, knint cons ){
+  node_list_t *rez = createlistnode();
+  node_t* runner = root, *smallnode, *bignode;
   if ( root->rnode == NULL || root->lnode == NULL ) return;
   int depth = 0;
   while ( runner != NULL ) {
@@ -166,70 +167,82 @@ void notrecursive_treesolver ( node_t* root, knint cons ){
   		while ( runner->rnode->length == 0 ) { runner = runner->rnode; depth++; }
   		while ( runner->lnode->length == 0 ) { runner = runner->lnode; depth++; }
   	}
-	runner->items = dichosolve(runner->lnode->length, runner->lnode->items,
-                           runner->rnode->length, runner->rnode->items,
-                           cons, &(runner->length) );
-  	printf ( "depth = %d. right length = %d, left length = %d\n", depth, runner->rnode->length, runner->lnode->length ); 
+
+	if ( runner->lnode->length > runner->rnode->length ) {
+		bignode = runner->lnode;
+		smallnode = runner->rnode;
+	} else {
+		bignode = runner->rnode;
+		smallnode = runner->lnode;
+	}
+
+	dichosolve (runner, bignode, smallnode, cons );
+
+	//clear_node (runner->lnode);
+        //clear_node (runner->rnode);
+
+  	//printf ( "depth = %d. right length = %d, left length = %d\n", depth, runner->rnode->length, runner->lnode->length ); 
   	//print_hash (runner->rnode->items);
   	//print_hash (runner->lnode->items);
-  	fflush (stdout);
+  	//fflush (stdout);
 
   	runner = runner->hnode;
   	depth--;
   }
 }
 
-void recursive_treesolver(node_t* root, knint cons){
-  if( root->length != 0 ) return;
+item_t* recursive_treesolver(node_t* root, knint cons, int* length){
+  if( root->length != 0 ) {
+	length = &(root->length);
+	return root->items;
+  }
 
-  if( root->lnode->length == 0 ) treesolver (root->lnode,cons);
-  if( root->rnode->length == 0 ) treesolver (root->rnode,cons);
-  
-  root->items = dichosolve(root->lnode->length, root->lnode->items,
-                           root->rnode->length, root->rnode->items,
-                           cons, &(root->length) );
+  item_t *litems, *ritems;
+  int *llength, *rlength;
+
+  litems = treesolver (root->lnode,cons,llength);
+  ritems = treesolver (root->rnode,cons,rlength);
+
+  return dichosolve(llength, litems, rlength, ritems, cons, length );
 
 //  print_tree(root);
 }
 
 
-item_t* dichosolve(int size1, item_t* first, int size2, item_t* second, knint cons, int* rezsize) {
+void dichosolve ( node_t* to, node_t* big, node_t* small ) {
 
-  if( size1 == -1 && size2 == -1 ){
-    *rezsize = -1;
-    return NULL;
-  }
-  if ( size1 == -1 ) {
-    *rezsize = size2;
-    return copyhash (second);
-  }
-  if ( size2 == -1 ) {
-    *rezsize = size1;
-    return copyhash (first);
-  }
+  to->items = big->items;
+  to->length = big->length;
+
+  if ( small->length == -1 ) { return; }
 
   //item_t *its = createitems0 (cons), *fp, *sp;
-  item_t *its = NULL, *fp, *sp, *tmp;
+  item_t *fp, *sp, *tmp;
   knint w, p;
-  int cnt = 0; // real count of @its
+  //int cnt = 0; // real count of @to->items
+
+  // save big->items to bugbuf
+  int biglength = big->length;
+  item_t **bigbuf = (item_t**)malloc(sizeof(item_t*) * biglength), **run;
+
+  for ( fp = big->items, run = bigbuf; fp != NULL ; fp = fp->hh.next, run++ ) {
+    (*run) = fp;
+  }
+
 
   knint *wp, *pp;
 
-  // put all elements of first table
-  for ( fp = first ; fp != NULL && *(fp->w) <= cons ; fp = fp->hh.next ) {
-    cnt++;
-    sp = copyitem (fp);
-    HASH_ADD_KEYPTR ( hh, its, sp->w, KNINT_SIZE, sp );
-  }
   // put new elements of second table or replace elements having less value
-  for( fp = second ; fp!= NULL && *(fp->w) <= cons ; fp = fp->hh.next ) {
-    HASH_FIND (hh, its, fp->w, KNINT_SIZE, tmp);
+  for( fp = small->items ; fp!= NULL && *(fp->w) <= cons ; ) {
+    HASH_FIND (hh, to->items, fp->w, KNINT_SIZE, tmp);
     if( tmp == NULL ){
-      cnt++;
-      tmp = copyitem (fp);
-      HASH_ADD_KEYPTR (hh, its, tmp->w, KNINT_SIZE, tmp);
+      to->length++;//cnt++;
+      tmp = fp->hh.next;//tmp = copyitem (fp);
+      HASH_ADD_KEYPTR (hh, to->items, fp->w, KNINT_SIZE, fp);
+      fp = tmp;
     } else {
       *(tmp->p) = MAXINT ( *(fp->p) , *(tmp->p) );
+      fp = fp->hh.next;
     }
   }
   // pairwise addition
