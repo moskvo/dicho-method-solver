@@ -45,6 +45,21 @@ void print_items (int,item_t*);
 void print_items_line (int,item_t*);
 void print_hash (item_t*);
 
+// linked list
+typedef struct litem_t {
+  knint *p, *w;
+  struct litem_t * next;
+} litem_t;
+typedef struct head_item_list {
+  litem_t *first;
+  int count;
+} head_litem_t;
+litem_t* createlistitem ();
+head_litem_t* createheadlistitem ();
+size_t LITEM_SIZE;
+size_t HEAD_LITEM_SIZE;
+
+
 
 /*-- list for collect all solutions section --*/
 
@@ -88,7 +103,8 @@ void free_task (task_t**);
 /*-- tree section --*/
 
 typedef struct node {
-  item_t  *items; // hash
+  //item_t  *items; // hash
+  head_litem_t *items;
   int length; // if length = 1, then free through DL_FOREACH, otherwise "HASH_CLEAR(hh,&items); free(items)"
   struct node  *lnode, *rnode, *hnode; // left, right and head nodes in tree
   int source;

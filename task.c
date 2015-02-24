@@ -91,6 +91,24 @@ void print_hash (item_t *hash){
   puts("");
 }
 
+size_t LITEM_SIZE = sizeof (litem_t);
+size_t HEAD_LITEM_SIZE = sizeof (head_litem_t);
+
+litem_t* createlistitem () {
+	litem_t *item = (litem_t*) malloc(LITEM_SIZE);
+	item->p = (knint*)malloc (2*KNINT_SIZE);
+        item->w = item->p+1;
+	return item;
+}
+head_litem_t* createheadlistitem () {
+	head_litem_t *head = (head_litem_t*) malloc(HEAD_LITEM_SIZE);
+	head->count = 0;
+	head->first = NULL;
+}
+
+
+/* --- */
+
 const size_t NODELIST_SIZE = sizeof(node_list_t),
              HEADLIST_SIZE = sizeof(head_list_t);
 
@@ -120,6 +138,7 @@ void addnode (head_list_t *head, node_list_t *node) {
 /*
 	add adjunct's list to end of head's list
 */
+
 void addlist (head_list_t* head, head_list_t* adjunct) {
   if ( adjunct == NULL || adjunct->next == NULL ) return;
   node_list_t* t = head->next;
@@ -268,6 +287,7 @@ node_t* createnodes (int size) {
   for ( t = rez ; t < rez + size ; t++ ) {
     t->source = -1;
   }
+  items = createheaditemlist ();
   return rez;
 }
 
