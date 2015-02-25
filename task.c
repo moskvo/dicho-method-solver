@@ -11,6 +11,8 @@ item_t* createitems(int size){
         *w = (knint*)malloc (size*KNINT_SIZE);
   item_t *items = (item_t*)malloc (size*sizeof(item_t)), *i;
   if( (p == 0) || (w == 0) || (items == 0) ) { return NULL; }
+  
+  items->next = NULL;
 
   for( i=items ; i < items+size ; i++ )
   {  i->p = p++; i->w = w++; }
@@ -25,6 +27,8 @@ item_t* createitems0(int size){
   item_t *items = (item_t*)malloc (size*sizeof(item_t)), *i;
   if( (p == 0) || (w == 0) || (items == 0) ) { return NULL; }
 
+  item->next = NULL;
+  
   for( i=items ; i < items+size ; i++ )
   {  i->p = p++; i->w = w++; }
 
@@ -37,6 +41,7 @@ item_t* copyitem (item_t *other){
   r->w = (knint*)malloc(KNINT_SIZE);
   *(r->p) = *(other->p);
   *(r->w) = *(other->w);
+  r->next = other->next;
   return r;
 }
 
@@ -47,7 +52,7 @@ item_t* copyitems (int size, item_t *others) {
   return r;
 }
 
-item_t* copyhash (item_t *other) {
+/*item_t* copyhash (item_t *other) {
   item_t *hash = NULL, *ptr, *tmp;
 
   for ( ptr = other ; ptr != NULL ; ptr = ptr->hh.next ) {
@@ -55,7 +60,7 @@ item_t* copyhash (item_t *other) {
     HASH_ADD_KEYPTR ( hh, hash, tmp->w, KNINT_SIZE, tmp );
   }
   return hash;
-}
+}*/
 
 item_t* joinitems(int size1, item_t *it1, int size2, item_t *it2) {
   item_t *items = createitems(size1+size2);
@@ -83,28 +88,95 @@ void print_items_line ( int size , item_t *item ){
     printf("(%4ld %4ld) ",*p,*w);
 }
 
-void print_hash (item_t *hash){
+/*void print_hash (item_t *hash){
   item_t *p;
   for ( p = hash ; p != NULL ; p = p->hh.next ) {
     printf ("(%4ld %4ld) ",*(p->p),*(p->w));
   }
   puts("");
+}*/
+
+void print_items_list (item_t *list){
+  item_t *p;
+  for ( p = list ; p != NULL ; p = p->next ) {
+    printf ("(%4ld %4ld) ",*(p->p),*(p->w));
+  }
+  puts("");
 }
 
-size_t LITEM_SIZE = sizeof (litem_t);
-size_t HEAD_LITEM_SIZE = sizeof (head_litem_t);
+void free_items (item_t **headp){
+  if( headp ) {
+  free ((*headp)->p);
+  free ((*headp)->w);
+  free (*headp);
+  *headp = NULL;
+  }
+}
 
-litem_t* createlistitem () {
-	litem_t *item = (litem_t*) malloc(LITEM_SIZE);
-	item->p = (knint*)malloc (2*KNINT_SIZE);
-        item->w = item->p+1;
-	return item;
+/*void free_hash (item_t **hash){
+  if( hash ) {
+  item_t *p, *tmp;
+  HASH_ITER (hh, *hash, p, tmp) {
+    HASH_DEL (*hash, p);
+    free_items (&p);
+  }
+  *hash = NULL;
+  }
+}*/
+
+void free_items_list (item_t **list){
+  if( list ) {
+  item_t *p, *tmp;
+  for ( p = *list ; p != NULL ; ) {
+    tmp = p->next;
+    free_items (&p);
+    p = tmp;
+  }
+  *list = NULL;
+  }
 }
-head_litem_t* createheadlistitem () {
-	head_litem_t *head = (head_litem_t*) malloc(HEAD_LITEM_SIZE);
-	head->count = 0;
-	head->first = NULL;
+
+// *(preplace->w) < *(item->w)
+void put_item (item_t *preplace, item_t *item) {
+	if ( *(preplace->p) >= *(item->p) ) {
+		return;
+	} else {
+		item_t *p = preplace->next;
+		if ( *(p->w) == *(item->w) ) {
+			*(p->w) = MAXINT(*(p->w),*(item->w));
+		} else {
+			preplace->next = item;
+			item->next = p;
+		}
+	}
 }
+
+item_t* find_preplace (item_t *list, item_t *item) {
+	if ( *(list->w) > *(item->w) ) return NULL;
+	for ( ; list->next != NULL && *(list->next->w) < *(item->w) ; list = list->next );
+	return list;
+}
+
+// find preplace and cut bad items with inefficient payoffs
+item_t* find_preplace_badcutter (item_t *list, item_t *item) {
+	if ( *(list->w) > *(item->w) ) return NULL;
+	knint edge = *(list->p);
+	item_t *tmp;
+	while ( 1 ) {
+		while ( list->next != NULL && edge >= *(list->next->p) ) {
+			tmp = list->next;
+			list->next = list->next->next;
+			free_items (&tmp);
+		}
+		
+		if ( list->next != NULL && *(list->next->w) < *(item->w) ) {
+			edge = *(list->p);
+			list = list->next;
+		} else break;
+	}
+	return list;
+}
+
 
 
 /* --- */
@@ -247,28 +319,6 @@ void print_task (task_t* task) {
   print_items (task->length, task->items);
 }
 
-
-
-void free_items (item_t **headp){
-  if( headp ) {
-  free ((*headp)->p);
-  free ((*headp)->w);
-  free (*headp);
-  *headp = NULL;
-  }
-}
-
-void free_hash (item_t **hash){
-  if( hash ) {
-  item_t *p, *tmp;
-  HASH_ITER (hh, *hash, p, tmp) {
-    HASH_DEL (*hash, p);
-    free_items (&p);
-  }
-  *hash = NULL;
-  }
-}
-
 void free_task(task_t **p){
   if ( p ) {
     if( (*p)->items != NULL ) free_items ( &((*p)->items) );
@@ -287,7 +337,6 @@ node_t* createnodes (int size) {
   for ( t = rez ; t < rez + size ; t++ ) {
     t->source = -1;
   }
-  items = createheaditemlist ();
   return rez;
 }
 
@@ -300,7 +349,7 @@ void print_node (char * pre, node_t *node){
   if( node->length < 1 ) puts("node: 0 items");
   else {
     item_t *item = node->items;
-    for ( ; item != NULL ; item = item->hh.next ) {
+    for ( ; item != NULL ; item = item->next ) {
       printf ("(%ld %ld) ",*(item->p),*(item->w));
     }
     printf("src:%d",node->source);
@@ -315,7 +364,7 @@ void print_node (char * pre, node_t *node){
 }
 
 void free_node (node_t* node){
-  free_hash (&(node->items));
+  free_items_list (&(node->items)); //free_hash (&(node->items));
   free (node);
 }
 
@@ -337,13 +386,14 @@ void free_tree (node_t *root){
   }// while
 }// free_tree
 
+/*
 int value_sort (item_t *a, item_t *b) {
   if ( *(a->p) < *(b->p) ) return (int) 1;
   if ( *(a->p) > *(b->p) ) return (int) -1;
   return 0;
 }
 
-/*-- solutions tree section ---*/
+//-- solutions tree section ---//
 
 size_t SOLNODE_SIZE = sizeof(solnode_t);
 solnode_t* createsolnode0 () {
@@ -411,8 +461,8 @@ void free_solnodes ( solnode_t *tree ) {
     solnode_t *s, *tmp;
 
     HASH_ITER (hh, tree->childs, s, tmp) {
-      HASH_DEL (tree->childs, s);  /* delete from hash */
-      free_solnodes (s);           /* free memory  */
+      HASH_DEL (tree->childs, s);  // delete from hash 
+      free_solnodes (s);           // free memory 
     }
     
     item_t *i, *ti;
@@ -424,3 +474,4 @@ void free_solnodes ( solnode_t *tree ) {
     
     free (tree);
 }
+*/

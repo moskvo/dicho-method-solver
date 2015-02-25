@@ -27,13 +27,14 @@ node_t* optimal_dichotomic_tree ( const task_t *task){
 
   // DP branch
   node_t *p = head;
-  item_t *pl = dpitems, *tmp;
+  item_t *pl = dpitems;//, *tmp;
   int i;
   for ( i = 0 ; i < task->length-q ; i++ ) { // in fact p move as p = p + 2
     p->lnode = (p+1);
-    p->lnode->items = NULL;
-    tmp = copyitem(pl);
-    HASH_ADD_KEYPTR ( hh, p->lnode->items, tmp->w, KNINT_SIZE, tmp);
+    //paired with hash p->lnode->items = NULL;
+    //tmp = copyitem(pl);
+    //HASH_ADD_KEYPTR ( hh, p->lnode->items, tmp->w, KNINT_SIZE, tmp);
+    p->lnode->items = copyitem(pl);
     pl++;
     p->lnode->length = 1;
     p->lnode->hnode = p;
@@ -127,23 +128,26 @@ void dicho_tree_notrecursive(node_t *head, const int size, item_t *items){
     if( sizes[i] > 2 ) { printf("size of leaf more than 2\n"); fflush(stdout); }
     if( sizes[i] == 2 ){
       //1: pnext = (node_t*)calloc (2,NODE_SIZE);
-      pnext->items = NULL;
-      tmp = copyitem (&items[indexes[i]]);
-      HASH_ADD_KEYPTR (hh, pnext->items, tmp->w, KNINT_SIZE, tmp);
+      //pnext->items = NULL;
+      //tmp = copyitem (&items[indexes[i]]);
+      //HASH_ADD_KEYPTR (hh, pnext->items, tmp->w, KNINT_SIZE, tmp);
+      pnext->items = copyitem (&items[indexes[i]]);
       pnext->length = 1;
       p->lnode = pnext;
       pnext->hnode = p; pnext++;
 
-      pnext->items = NULL;
-      tmp = copyitem (&items[indexes[i]+1]);
-      HASH_ADD_KEYPTR (hh, pnext->items, tmp->w, KNINT_SIZE, tmp);
+      //pnext->items = NULL;
+      //tmp = copyitem (&items[indexes[i]+1]);
+      //HASH_ADD_KEYPTR (hh, pnext->items, tmp->w, KNINT_SIZE, tmp);
+      pnext->items = copyitem (&items[indexes[i]+1]);
       pnext->length = 1;
       p->rnode = pnext;
       pnext->hnode = p; pnext++;
     } else if( sizes[i] == 1 ){
-      p->items = NULL;
-      tmp = copyitem (&items[indexes[i]]);
-      HASH_ADD_KEYPTR (hh, p->items, tmp->w, KNINT_SIZE, tmp);
+      //p->items = NULL;
+      //tmp = copyitem (&items[indexes[i]]);
+      //HASH_ADD_KEYPTR (hh, p->items, tmp->w, KNINT_SIZE, tmp);
+      p->items = copyitem (&items[indexes[i]]);
       p->length = 1;
     } else {
       // error
@@ -214,14 +218,14 @@ void dichosolve ( node_t* to, node_t* big, node_t* small ) {
   to->items = big->items;
   to->length = big->length;
 
-  if ( small->length == -1 ) { return; }
+  if ( small->length < 1 ) { return; }
 
   //item_t *its = createitems0 (cons), *fp, *sp;
   item_t *fp, *sp, *tmp;
   knint w, p;
   //int cnt = 0; // real count of @to->items
 
-  // save big->items to bugbuf
+  // save big->items to bigbuf
   int biglength = big->length;
   item_t **bigbuf = (item_t**)malloc(sizeof(item_t*) * biglength), **run;
 
@@ -233,8 +237,25 @@ void dichosolve ( node_t* to, node_t* big, node_t* small ) {
   knint *wp, *pp;
 
   // put new elements of second table or replace elements having less value
-  for( fp = small->items ; fp!= NULL && *(fp->w) <= cons ; ) {
-    HASH_FIND (hh, to->items, fp->w, KNINT_SIZE, tmp);
+  sp = to->items;
+  fp = small->items;
+  small->items = small->items->next;
+  if ( (tmp = find_preplace_badcutter(sp,small->items)) == NULL ) {
+	to->items = fp;
+	to->items->next = sp;
+	sp = to->items;
+  } else {
+	put_item (tmp, fp);
+	sp = tmp; // put_item can drop fp
+  }
+
+  for( fp = small->items ; fp != NULL /*&& *(fp->w) <= cons*/ ; ) {
+    sp = find_preplace_badcutter (sp, fp);
+    tmp = fp->next;
+    put_item (sp, fp);
+    fp = tmp;
+    
+    /* if not sorted
     if( tmp == NULL ){
       to->length++;//cnt++;
       tmp = fp->hh.next;//tmp = copyitem (fp);
@@ -243,14 +264,18 @@ void dichosolve ( node_t* to, node_t* big, node_t* small ) {
     } else {
       *(tmp->p) = MAXINT ( *(fp->p) , *(tmp->p) );
       fp = fp->hh.next;
-    }
+    }*/
+    
   }
+  
+  //----------------------------- 2015-02-25
+
   // pairwise addition
   for( fp = first ; fp != NULL ; fp = fp->hh.next ){
     for( sp = second ; sp != NULL && (p = *(fp->p) + *(sp->p),w = *(fp->w) + *(sp->w), w<=cons) ; sp = sp->hh.next ){
       HASH_FIND (hh, its, &w, KNINT_SIZE, tmp);
       if( tmp == NULL ){
-        cnt++;
+        to->length++;//cnt++;
 	tmp = copyitem ( sp );
         *(tmp->w) = w;
         *(tmp->p) = p;

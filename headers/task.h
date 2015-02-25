@@ -17,6 +17,8 @@
 #include "uthash.h"
 #endif
 
+#define MAXINT(x,y) ((x>y)?(x):(y))
+
 /*-- item section --*/
 
 #define KNINT_LONG
@@ -26,7 +28,8 @@ size_t KNINT_SIZE;
 
 typedef struct item_t {
   knint *p, *w; // payoff and weight
-  UT_hash_handle hh;
+  struct item_t *next;
+  //UT_hash_handle hh;
 } item_t;
 size_t ITEM_SIZE;
 
@@ -39,26 +42,19 @@ item_t* createitems (int);
 item_t* createitems0 (int);
 item_t* copyitem (item_t*);
 item_t* copyitems (int, item_t*);
-item_t* copyhash (item_t*);
+//item_t* copyhash (item_t*);
 item_t* joinitems (int, item_t*, int, item_t*);
 void print_items (int,item_t*);
 void print_items_line (int,item_t*);
-void print_hash (item_t*);
+//void print_hash (item_t*);
+void print_items_list (item_t*);
+void free_items (item_t**);
+//void free_hash (item_t**);
+void free_items_list (item_t**);
 
-// linked list
-typedef struct litem_t {
-  knint *p, *w;
-  struct litem_t * next;
-} litem_t;
-typedef struct head_item_list {
-  litem_t *first;
-  int count;
-} head_litem_t;
-litem_t* createlistitem ();
-head_litem_t* createheadlistitem ();
-size_t LITEM_SIZE;
-size_t HEAD_LITEM_SIZE;
-
+void put_item (item_t*, item_t *);
+item_t* find_preplace (item_t*, item_t*);
+item_t* find_preplace_badcutter (item_t*, item_t*); // find preplace and cut bad items with inefficient payoffs
 
 
 /*-- list for collect all solutions section --*/
@@ -96,15 +92,12 @@ task_t* createtask (int,knint);
 task_t* readtask(char*);
 void print_task (task_t*);
 
-void free_items (item_t**);
-void free_hash (item_t**);
 void free_task (task_t**);
 
 /*-- tree section --*/
 
 typedef struct node {
-  //item_t  *items; // hash
-  head_litem_t *items;
+  item_t  *items; // hash
   int length; // if length = 1, then free through DL_FOREACH, otherwise "HASH_CLEAR(hh,&items); free(items)"
   struct node  *lnode, *rnode, *hnode; // left, right and head nodes in tree
   int source;

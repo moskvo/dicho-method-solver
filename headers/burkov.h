@@ -9,7 +9,6 @@
 #include <math.h>
 #endif
 
-#define MAXINT(x,y) ((x>y)?(x):(y))
 /*
 *  building optimum dichotomy tree on Burkov,Burkova's works
 */
