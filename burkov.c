@@ -1,5 +1,8 @@
 #include "burkov.h"
 
+#define OLD_ELEM 0
+#define NEW_ELEM 1
+
 void (*dicho_tree) (node_t*, const int, item_t*) = dicho_tree_notrecursive;
 node_t* (*burkovtree)(const task_t*) = optimal_dichotomic_tree;
 void (*treesolver) (node_t*, knint) = notrecursive_treesolver;
@@ -221,38 +224,36 @@ void dichosolve ( node_t* to, node_t* big, node_t* small ) {
   if ( small->length < 1 ) { return; }
 
   //item_t *its = createitems0 (cons), *fp, *sp;
-  item_t *fp, *sp, *tmp;
+  item_t *fp, *sp, *tmp, *oldbrokens = createitems0(1);
   knint w, p;
-  //int cnt = 0; // real count of @to->items
-
-  // save big->items to bigbuf
-  int biglength = big->length;
-  item_t **bigbuf = (item_t**)malloc(sizeof(item_t*) * biglength), **run;
-
-  for ( fp = big->items, run = bigbuf; fp != NULL ; fp = fp->hh.next, run++ ) {
-    (*run) = fp;
-  }
-
-
-  knint *wp, *pp;
 
   // put new elements of second table or replace elements having less value
   sp = to->items;
   fp = small->items;
   small->items = small->items->next;
-  if ( (tmp = find_preplace_badcutter(sp,small->items)) == NULL ) {
+  if ( (tmp = find_preplace_badcutter(sp,small->items->w)) == NULL ) {
 	to->items = fp;
+	fp->flag = NEW_ELEM;
 	to->items->next = sp;
 	sp = to->items;
+	to->length++;
   } else {
-	put_item (tmp, fp);
-	sp = tmp; // put_item can drop fp
+	if ( put_item (tmp, fp, oldbrokens) == 0 ) {
+		fp->flag = NEW_ELEM;
+		sp = fp;
+		to->length++;
+	} else { // put_item drops fp
+		sp = tmp;
+	}
   }
 
   for( fp = small->items ; fp != NULL /*&& *(fp->w) <= cons*/ ; ) {
-    sp = find_preplace_badcutter (sp, fp);
+    sp = find_preplace_badcutter (sp, fp->w);
     tmp = fp->next;
-    put_item (sp, fp);
+    if ( put_item (sp, fp, oldbrokens) == 0 ) {
+    	fp->flag = NEW_ELEM;
+    	to->length++;
+    }
     fp = tmp;
     
     /* if not sorted
@@ -268,31 +269,39 @@ void dichosolve ( node_t* to, node_t* big, node_t* small ) {
     
   }
   
-  //----------------------------- 2015-02-25
+
+  //----------------------------- 2015-03-03: what i must do with oldbrokens items?
 
   // pairwise addition
-  for( fp = first ; fp != NULL ; fp = fp->hh.next ){
-    for( sp = second ; sp != NULL && (p = *(fp->p) + *(sp->p),w = *(fp->w) + *(sp->w), w<=cons) ; sp = sp->hh.next ){
-      HASH_FIND (hh, its, &w, KNINT_SIZE, tmp);
-      if( tmp == NULL ){
-        to->length++;//cnt++;
-	tmp = copyitem ( sp );
-        *(tmp->w) = w;
-        *(tmp->p) = p;
-        HASH_ADD_KEYPTR (hh, its, tmp->w, KNINT_SIZE, tmp);
-      } else {
-        *(tmp->p) = MAXINT( *(tmp->p),p );
-      }
+  item_t *lastelem;
+  for( fp = to->items ; fp != NULL ; fp = fp->next ) {
+    if ( fp->flag == NEW_ELEM ) { fp->flag = OLD_ELEM; continue; }
+    lastelem = fp;
+    for( sp = small->items ; sp != NULL && (p = *(fp->p) + *(sp->p),w = *(fp->w) + *(sp->w), w<=cons) ; sp = sp->next ) {
+    	lastelem = find_preplace_badcutter (lastelem,&w);
+    	tmp = copyitem (lastelem);
+    	*(tmp->p) = p;
+    	*(tmp->w) = w;
+    	if ( put_item (lastelem, tmp, oldbrokens) == 0 ) { tmp->flag = NEW_ELEM; to->length++; }
+    	else { free_items (&tmp); }
     }
   }
 
-  // save non-zero elements in solid array
-  if( cnt == 0 ){
-    *rezsize = -1;
-    return NULL;
-  }
 
-  *rezsize = cnt;
-  return its;
+  // delete inefficient elems in tail
+	knint edge = *(lastelem->p);
+	do {
+		while ( lastelem->next != NULL && edge >= *(lastelem->next->p) ) {
+			tmp = lastelem->next;
+			lastelem->next = lastelem->next->next;
+			free_items (&tmp);
+		}
+		
+		if ( lastelem->next != NULL ) {
+			edge = *(lastelem->p);
+			lastelem = lastelem->next;
+		} else break;
+	} while ( 1 );
+
 }
 

@@ -13,9 +13,9 @@
 #include <string.h>
 #endif
 
-#ifndef UTHASH_H
+/*#ifndef UTHASH_H
 #include "uthash.h"
-#endif
+#endif*/
 
 #define MAXINT(x,y) ((x>y)?(x):(y))
 
@@ -29,6 +29,7 @@ size_t KNINT_SIZE;
 typedef struct item_t {
   knint *p, *w; // payoff and weight
   struct item_t *next;
+  char flag;
   //UT_hash_handle hh;
 } item_t;
 size_t ITEM_SIZE;
@@ -52,7 +53,7 @@ void free_items (item_t**);
 //void free_hash (item_t**);
 void free_items_list (item_t**);
 
-void put_item (item_t*, item_t *);
+int put_item (item_t*, item_t *);
 item_t* find_preplace (item_t*, item_t*);
 item_t* find_preplace_badcutter (item_t*, item_t*); // find preplace and cut bad items with inefficient payoffs
 
