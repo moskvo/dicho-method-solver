@@ -2,6 +2,7 @@
 
 #define OLD_ELEM 0
 #define NEW_ELEM 1
+#define ONESHOT_ELEM 2
 
 void (*dicho_tree) (node_t*, const int, item_t*) = dicho_tree_notrecursive;
 node_t* (*burkovtree)(const task_t*) = optimal_dichotomic_tree;
@@ -164,8 +165,7 @@ void dicho_tree_notrecursive(node_t *head, const int size, item_t *items){
 
 /*  funcs for solving */
 
-node_list_t* notrecursive_treesolver ( node_t* root, knint cons ){
-  node_list_t *rez = createlistnode();
+void notrecursive_treesolver ( node_t* root, knint cons ){
   node_t* runner = root, *smallnode, *bignode;
   if ( root->rnode == NULL || root->lnode == NULL ) return;
   int depth = 0;
@@ -195,28 +195,27 @@ node_list_t* notrecursive_treesolver ( node_t* root, knint cons ){
 
   	runner = runner->hnode;
   	depth--;
-  }
+  } // while
 }
 
-item_t* recursive_treesolver(node_t* root, knint cons, int* length){
-  if( root->length != 0 ) {
-	length = &(root->length);
-	return root->items;
-  }
+void recursive_treesolver(node_t* root, knint cons){
+  if( root->length != 0 ) return;
 
   item_t *litems, *ritems;
   int *llength, *rlength;
 
-  litems = treesolver (root->lnode,cons,llength);
-  ritems = treesolver (root->rnode,cons,rlength);
+  treesolver (root->lnode,cons);
+  treesolver (root->rnode,cons);
 
-  return dichosolve(llength, litems, rlength, ritems, cons, length );
-
+  if ( root->lnode->length > root->rnode->length )
+  	dichosolve(root, litems, ritems, cons );
+  else
+  	dichosolve(root, ritems, litems, cons );
 //  print_tree(root);
 }
 
 
-void dichosolve ( node_t* to, node_t* big, node_t* small ) {
+void dichosolve ( node_t* to, node_t* big, node_t* small, knint cons ) {
 
   to->items = big->items;
   to->length = big->length;
@@ -224,7 +223,7 @@ void dichosolve ( node_t* to, node_t* big, node_t* small ) {
   if ( small->length < 1 ) { return; }
 
   //item_t *its = createitems0 (cons), *fp, *sp;
-  item_t *fp, *sp, *tmp, *oldbrokens = createitems0(1);
+  item_t *fp, *sp, *tmp;
   knint w, p;
 
   // put new elements of second table or replace elements having less value
@@ -238,7 +237,7 @@ void dichosolve ( node_t* to, node_t* big, node_t* small ) {
 	sp = to->items;
 	to->length++;
   } else {
-	if ( put_item (tmp, fp, oldbrokens) == 0 ) {
+	if ( put_item (tmp, fp) == 0 ) {
 		fp->flag = NEW_ELEM;
 		sp = fp;
 		to->length++;
@@ -250,7 +249,7 @@ void dichosolve ( node_t* to, node_t* big, node_t* small ) {
   for( fp = small->items ; fp != NULL /*&& *(fp->w) <= cons*/ ; ) {
     sp = find_preplace_badcutter (sp, fp->w);
     tmp = fp->next;
-    if ( put_item (sp, fp, oldbrokens) == 0 ) {
+    if ( put_item (sp, fp) == 0 ) {
     	fp->flag = NEW_ELEM;
     	to->length++;
     }
@@ -269,12 +268,9 @@ void dichosolve ( node_t* to, node_t* big, node_t* small ) {
     
   }
   
-
-  //----------------------------- 2015-03-03: what i must do with oldbrokens items?
-
   // pairwise addition
-  item_t *lastelem;
-  for( fp = to->items ; fp != NULL ; fp = fp->next ) {
+  item_t *lastelem, *preelem = NULL;
+  for( fp = to->items ; fp != NULL ; preelem = fp, fp = fp->next ) {
     if ( fp->flag == NEW_ELEM ) { fp->flag = OLD_ELEM; continue; }
     lastelem = fp;
     for( sp = small->items ; sp != NULL && (p = *(fp->p) + *(sp->p),w = *(fp->w) + *(sp->w), w<=cons) ; sp = sp->next ) {
@@ -282,10 +278,18 @@ void dichosolve ( node_t* to, node_t* big, node_t* small ) {
     	tmp = copyitem (lastelem);
     	*(tmp->p) = p;
     	*(tmp->w) = w;
-    	if ( put_item (lastelem, tmp, oldbrokens) == 0 ) { tmp->flag = NEW_ELEM; to->length++; }
+    	if ( put_item (lastelem, tmp) == 0 ) { 
+    		tmp->flag = NEW_ELEM; 
+    		to->length++;
+    	}
     	else { free_items (&tmp); }
+    } // for sp
+    if ( fp->flag == ONESHOT_ELEM ) {
+    	preelem->next = fp->next; // preelem isn't NULL cause ONESHOT_ELEM cann't be a first, see put_item().
+    	free_item (&fp);
+    	fp = preelem;
     }
-  }
+  } // for fp
 
 
   // delete inefficient elems in tail
@@ -298,10 +302,9 @@ void dichosolve ( node_t* to, node_t* big, node_t* small ) {
 		}
 		
 		if ( lastelem->next != NULL ) {
-			edge = *(lastelem->p);
 			lastelem = lastelem->next;
+			edge = *(lastelem->p);
 		} else break;
 	} while ( 1 );
 
-}
-
+} // dichosolve()

@@ -137,20 +137,20 @@ void free_items_list (item_t **list){
 }
 
 // *(preplace->w) < *(item->w)
-int put_item (item_t *preplace, item_t *item, item_t *oldbroken) {
+int put_item (item_t *preplace, item_t *item) {
 	if ( *(preplace->p) >= *(item->p) ) {
 		return 1;
 	} else {
 		item_t *pnext = preplace->next, *tmp;
 		if ( *(pnext->w) == *(item->w) ) {
 			if ( *(pnext->p) < *(item->p)  ) {
-				preplace->next = item;
-				item->next = pnext->next;
 				if ( pnext->flag == OLD_ELEM ) {
-					tmp = oldbroken->next;
-					oldbroken->next = pnext;
-					pnext->next = tmp;
+					preplace->next = item;
+					item->next = pnext;
+					pnext->flag = ONESHOT_ELEM;
 				} else {
+					preplace->next = item;
+					item->next = pnext->next;
 					free_items (&pnext);
 				}
 				return 0;
@@ -177,14 +177,21 @@ item_t* find_preplace_badcutter (item_t *list, knint *itemw) {
 	do {
 		// remove inefficient elems after item "list"
 		while ( list->next != NULL && edge >= *(list->next->p) ) {
-			tmp = list->next;
-			list->next = list->next->next;
-			free_items (&tmp);
-		}
-		// step to next elem
+			if ( list->next->flag == NEW_ELEM ) {
+				tmp = list->next;
+				list->next = list->next->next;
+				free_items (&tmp);
+			} else {
+				if ( list->next->flag == OLD_ELEM ) {
+					list->next->flag = ONESHOT_ELEM;
+				}
+				list = list->next;
+			}
+		}// while
+			
 		if ( list->next != NULL && *(list->next->w) < *itemw ) {
-			edge = *(list->p);
 			list = list->next;
+			edge = *(list->p);
 		// while we can step further
 		} else break;
 	} while ( 1 );

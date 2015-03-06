@@ -23,7 +23,7 @@ void (*treesolver) (node_t* , knint );
 void notrecursive_treesolver (node_t* , knint );
 void recursive_treesolver (node_t* , knint );
 
-item_t* dichosolve( int,item_t*, int,item_t*, knint, int*);
+void dichosolve( node_t*, node_t*, node_t*, knint);
 
 
 #endif
