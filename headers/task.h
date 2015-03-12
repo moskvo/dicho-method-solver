@@ -45,9 +45,10 @@ void print_items_list (item_t*);
 void free_items (item_t**);
 void free_items_list (item_t**);
 
-int put_item (item_t*, item_t *);
+int put_item (item_t*, item_t**, int*);
+int safe_put_item (item_t*, item_t**, int*);
 item_t* find_preplace (item_t*, knint*);
-item_t* find_preplace_badcutter (item_t*, knint*); // find preplace and cut bad items with inefficient payoffs
+item_t* find_preplace_badcutter (item_t*, knint*, int*); // find preplace and cut bad items with inefficient payoffs
 
 //-- task section ---
 

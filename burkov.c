@@ -162,7 +162,7 @@ void dicho_tree_notrecursive(node_t *head, const int size, item_t *items){
 /*  funcs for solving */
 
 void notrecursive_treesolver ( node_t* root, knint cons ){
-  node_t* runner = root, *smallnode, *bignode;
+  node_t *runner = root, *smallnode, *bignode;
   if ( root->rnode == NULL || root->lnode == NULL ) return;
   int depth = 0;
   while ( runner != NULL ) {
@@ -212,6 +212,8 @@ void dichosolve ( node_t* to, node_t* big, node_t* small, knint cons ) {
 
   to->items = big->items;
   to->length = big->length;
+  
+  // big->items = NULL;
 
   if ( small->length < 1 ) { return; }
 
@@ -219,45 +221,42 @@ void dichosolve ( node_t* to, node_t* big, node_t* small, knint cons ) {
   item_t *fp, *sp, *tmp;
   knint w, p;
   
+  puts ("dichosolve. pairwise addition"); fflush(stdout);
   // pairwise addition
   item_t *lastelem, *preelem = NULL;
   for( fp = to->items ; fp != NULL ; preelem = fp, fp = fp->next ) {
     if ( fp->flag == NEW_ELEM ) { fp->flag = OLD_ELEM; continue; }
     lastelem = fp;
-    for( sp = small->items ; sp != NULL && (p = *(fp->p) + *(sp->p),w = *(fp->w) + *(sp->w), w<=cons) ; sp = sp->next ) {
-    	lastelem = find_preplace_badcutter (lastelem,&w);
+    for( sp = small->items ; sp != NULL && (p = *(fp->p) + *(sp->p), w = *(fp->w) + *(sp->w), w<=cons) ; sp = sp->next ) {
+    	lastelem = find_preplace_badcutter (lastelem,&w, &(to->length));
     	tmp = copyitem (lastelem);
     	*(tmp->p) = p;
     	*(tmp->w) = w;
-    	if ( put_item (lastelem, tmp) == 0 ) { 
-    		tmp->flag = NEW_ELEM; 
-    		to->length++;
-    	}
-    	else { free_items (&tmp); }
+    	put_item (lastelem, &tmp, &(to->length));
     } // for sp
     if ( fp->flag == ONESHOT_ELEM ) {
     	preelem->next = fp->next; // preelem isn't NULL cause ONESHOT_ELEM cann't be a first, see put_item().
     	free_items (&fp);
     	fp = preelem;
+    	to->length--;
     }
   } // for fp
 
-  // put new elements of second table or replace elements having less value
+  puts("put new elements of second table or replace elements having less value");fflush(stdout);
   item_t *desert = createitems0(1);
   lastelem = to->items;
   fp = small->items;
   small->items = small->items->next;
-  if ( (tmp = find_preplace_badcutter(lastelem,small->items->w)) == NULL ) {
-	fp->flag = NEW_ELEM;
+  if ( (tmp = find_preplace_badcutter(lastelem, small->items->w, &(to->length))) == NULL ) {
+	fp->flag = OLD_ELEM;
 	to->items = fp;
 	to->items->next = lastelem;
 	lastelem = to->items;
 	to->length++;
   } else {
-	if ( put_item (tmp, fp) == 0 ) {
-		fp->flag = NEW_ELEM;
+	if ( safe_put_item (tmp, &fp, &(to->length)) == 0 ) {
+		fp->flag = OLD_ELEM;
 		lastelem = fp;
-		to->length++;
 	} else { // put_item drops fp
 		lastelem = tmp;
 		fp->next = desert->next;
@@ -265,12 +264,12 @@ void dichosolve ( node_t* to, node_t* big, node_t* small, knint cons ) {
 	}
   }
 
+  puts ("cycle"); fflush(stdout);
   for( fp = small->items ; fp != NULL /*&& *(fp->w) <= cons*/ ; ) {
-    lastelem = find_preplace_badcutter (lastelem, fp->w);
+    lastelem = find_preplace_badcutter (lastelem, fp->w, &(to->length));
     tmp = fp->next;
-    if ( put_item (lastelem, fp) == 0 ) {
-    	fp->flag = NEW_ELEM;
-    	to->length++;
+    if ( safe_put_item (lastelem, &fp, &(to->length)) == 0 ) {
+    	fp->flag = OLD_ELEM;
     } else {
     	fp->next = desert->next;
 	desert->next = fp;
@@ -278,11 +277,10 @@ void dichosolve ( node_t* to, node_t* big, node_t* small, knint cons ) {
     fp = tmp;
         
   }
-  small->items = desert->next; // hold bad items
+  small->items = desert->next; // hold bad items (unsorted?)
   free_items (&desert);
 
-  // ----------------------- 2015-03-09[[]]]]]]]]]]][';';?
-  // delete inefficient elems in tail
+  puts("// delete inefficient elems in tail");fflush(stdout);
 	knint edge;
 	do {
 		edge = *(lastelem->p);
@@ -290,6 +288,7 @@ void dichosolve ( node_t* to, node_t* big, node_t* small, knint cons ) {
 			tmp = lastelem->next;
 			lastelem->next = lastelem->next->next;
 			free_items (&tmp);
+			to->length--;
 		}
 		
 		lastelem = lastelem->next;

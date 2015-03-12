@@ -26,7 +26,7 @@ item_t* createitems0(int size){
   if( (p == 0) || (w == 0) || (items == 0) ) { return NULL; }
   
   for( i=items ; i < items+size ; i++ )
-  {  i->p = p++; i->w = w++; }
+  {  i->p = p++; i->w = w++; i->flag = OLD_ELEM; }
 
   return items;
 }
@@ -133,27 +133,64 @@ void free_items_list (item_t **list){
 }
 
 // *(preplace->w) < *(item->w)
-int put_item (item_t *preplace, item_t *item) {
-	if ( *(preplace->p) >= *(item->p) ) {
+int put_item (item_t *preplace, item_t **item, int *listlen) {
+	item_t *vitem = *item;
+	if ( *(preplace->p) >= *(vitem->p) ) {
+		free_items (item);
 		return 1;
 	} else {
+		vitem->flag = NEW_ELEM;
 		item_t *pnext = preplace->next, *tmp;
-		if ( *(pnext->w) == *(item->w) ) {
-			if ( *(pnext->p) < *(item->p)  ) {
+		if ( pnext != NULL && *(pnext->w) == *(vitem->w) ) {
+			if ( *(pnext->p) < *(vitem->p)  ) {
+				preplace->next = vitem;
 				if ( pnext->flag == OLD_ELEM ) {
-					preplace->next = item;
-					item->next = pnext;
+					vitem->next = pnext;
 					pnext->flag = ONESHOT_ELEM;
+					(*listlen)++;
 				} else {
-					preplace->next = item;
-					item->next = pnext->next;
+					vitem->next = pnext->next;
 					free_items (&pnext);
 				}
 				return 0;
-			} else return 1;
+			} else {
+				free_items (item);
+				return 1;
+			}
 		} else {
-			preplace->next = item;
-			item->next = pnext;
+			preplace->next = vitem;
+			vitem->next = pnext;
+			(*listlen)++;
+		}
+	}
+	return 0;
+}
+int safe_put_item (item_t *preplace, item_t **item, int *listlen) {
+	item_t *vitem = *item;
+	if ( *(preplace->p) >= *(vitem->p) ) {
+		return 1;
+	} else {
+		vitem->flag = NEW_ELEM;
+		item_t *pnext = preplace->next, *tmp;
+		if ( pnext != NULL && *(pnext->w) == *(vitem->w) ) {
+			if ( *(pnext->p) < *(vitem->p)  ) {
+				preplace->next = vitem;
+				if ( pnext->flag == OLD_ELEM ) {
+					vitem->next = pnext;
+					pnext->flag = ONESHOT_ELEM;
+					(*listlen)++;
+				} else {
+					vitem->next = pnext->next;
+					free_items (&pnext);
+				}
+				return 0;
+			} else {
+				return 1;
+			}
+		} else {
+			preplace->next = vitem;
+			vitem->next = pnext;
+			(*listlen)++;
 		}
 	}
 	return 0;
@@ -166,7 +203,7 @@ item_t* find_preplace (item_t *list, knint *itemw) {
 }
 
 // find preplace and cut bad items with inefficient payoffs
-item_t* find_preplace_badcutter (item_t *list, knint *itemw) {
+item_t* find_preplace_badcutter (item_t *list, knint *itemw, int *listlen) {
 	if ( *(list->w) > *itemw ) return NULL;
 	knint edge = *(list->p);
 	item_t *tmp;
@@ -177,6 +214,7 @@ item_t* find_preplace_badcutter (item_t *list, knint *itemw) {
 				tmp = list->next;
 				list->next = list->next->next;
 				free_items (&tmp);
+				(*listlen)--;
 			} else {
 				if ( list->next->flag == OLD_ELEM ) {
 					list->next->flag = ONESHOT_ELEM;
