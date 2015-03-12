@@ -9,11 +9,9 @@ item_t* createitems(int size){
   if( size < 1 ) return NULL;
   knint *p = (knint*)malloc (size*KNINT_SIZE),
         *w = (knint*)malloc (size*KNINT_SIZE);
-  item_t *items = (item_t*)malloc (size*sizeof(item_t)), *i;
+  item_t *items = (item_t*)malloc (size*ITEM_SIZE), *i;
   if( (p == 0) || (w == 0) || (items == 0) ) { return NULL; }
   
-  items->next = NULL;
-
   for( i=items ; i < items+size ; i++ )
   {  i->p = p++; i->w = w++; }
 
@@ -24,10 +22,8 @@ item_t* createitems0(int size){
   if( size < 1 ) return NULL;
   knint *p = (knint*)calloc (size,KNINT_SIZE),
         *w = (knint*)calloc (size,KNINT_SIZE);
-  item_t *items = (item_t*)malloc (size*sizeof(item_t)), *i;
+  item_t *items = (item_t*)calloc (size,ITEM_SIZE), *i;
   if( (p == 0) || (w == 0) || (items == 0) ) { return NULL; }
-
-  item->next = NULL;
   
   for( i=items ; i < items+size ; i++ )
   {  i->p = p++; i->w = w++; }
@@ -157,7 +153,7 @@ int put_item (item_t *preplace, item_t *item) {
 			} else return 1;
 		} else {
 			preplace->next = item;
-			item->next = next;
+			item->next = pnext;
 		}
 	}
 	return 0;
@@ -205,7 +201,7 @@ task_t* createtask(int size, knint b){
   task_t *t = (task_t*)malloc(sizeof(task_t));
   t->length = size;
   t->b = b;
-  t->items = createitems (size);
+  t->items = createitems0 (size);
   return t;
 }
 
@@ -304,18 +300,19 @@ void print_node (char * pre, node_t *node){
   fputs(pre,stdout);
   if( node->length < 1 ) puts("node: 0 items");
   else {
-    item_t *item = node->items;
-    for ( ; item != NULL ; item = item->next ) {
+    item_t *item;
+    for ( item = node->items ; item != NULL ; item = item->next ) {
       printf ("(%ld %ld) ",*(item->p),*(item->w));
     }
     printf("src:%d",node->source);
     puts("");
   }
+  fflush(stdout);
   char *lpre = (char*)malloc(strlen(pre)+4), *rpre = (char*)malloc(strlen(pre)+4);
   strcpy(lpre,pre);
   strcpy(rpre,pre);
-  if( node->lnode != 0 ) print_node(strcat(lpre,"  |"), node->lnode);
-  if( node->rnode != 0 ) print_node(strcat(rpre,"  |"), node->rnode);
+  if( node->lnode != NULL ) print_node(strcat(lpre,"  |"), node->lnode);
+  if( node->rnode != NULL ) print_node(strcat(rpre,"  |"), node->rnode);
   free(lpre); free(rpre);
 }
 

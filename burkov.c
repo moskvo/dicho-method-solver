@@ -1,9 +1,5 @@
 #include "burkov.h"
 
-#define OLD_ELEM 0
-#define NEW_ELEM 1
-#define ONESHOT_ELEM 2
-
 void (*dicho_tree) (node_t*, const int, item_t*) = dicho_tree_notrecursive;
 node_t* (*burkovtree)(const task_t*) = optimal_dichotomic_tree;
 void (*treesolver) (node_t*, knint) = notrecursive_treesolver;
@@ -27,7 +23,7 @@ node_t* optimal_dichotomic_tree ( const task_t *task){
 
   // head of optimal dichotomic tree
   node_t* head = createnodes (2*task->length-1); // number of all nodes of any tree is doubled number of it's leafs minus one.
-  head->hnode = NULL; // parentof the head of the tree
+  head->hnode = NULL; // parentof the tree's head
 
   // DP branch
   node_t *p = head;
@@ -188,10 +184,10 @@ void notrecursive_treesolver ( node_t* root, knint cons ){
 	//clear_node (runner->lnode);
         //clear_node (runner->rnode);
 
-  	//printf ( "depth = %d. right length = %d, left length = %d\n", depth, runner->rnode->length, runner->lnode->length ); 
+  	printf ( "depth = %d. right length = %d, left length = %d\n", depth, runner->rnode->length, runner->lnode->length ); 
   	//print_hash (runner->rnode->items);
   	//print_hash (runner->lnode->items);
-  	//fflush (stdout);
+  	fflush (stdout);
 
   	runner = runner->hnode;
   	depth--;
@@ -201,16 +197,13 @@ void notrecursive_treesolver ( node_t* root, knint cons ){
 void recursive_treesolver(node_t* root, knint cons){
   if( root->length != 0 ) return;
 
-  item_t *litems, *ritems;
-  int *llength, *rlength;
-
   treesolver (root->lnode,cons);
   treesolver (root->rnode,cons);
 
   if ( root->lnode->length > root->rnode->length )
-  	dichosolve(root, litems, ritems, cons );
+  	dichosolve(root, root->lnode, root->rnode, cons );
   else
-  	dichosolve(root, ritems, litems, cons );
+  	dichosolve(root, root->rnode, root->lnode, cons );
 //  print_tree(root);
 }
 
@@ -225,48 +218,6 @@ void dichosolve ( node_t* to, node_t* big, node_t* small, knint cons ) {
   //item_t *its = createitems0 (cons), *fp, *sp;
   item_t *fp, *sp, *tmp;
   knint w, p;
-
-  // put new elements of second table or replace elements having less value
-  sp = to->items;
-  fp = small->items;
-  small->items = small->items->next;
-  if ( (tmp = find_preplace_badcutter(sp,small->items->w)) == NULL ) {
-	to->items = fp;
-	fp->flag = NEW_ELEM;
-	to->items->next = sp;
-	sp = to->items;
-	to->length++;
-  } else {
-	if ( put_item (tmp, fp) == 0 ) {
-		fp->flag = NEW_ELEM;
-		sp = fp;
-		to->length++;
-	} else { // put_item drops fp
-		sp = tmp;
-	}
-  }
-
-  for( fp = small->items ; fp != NULL /*&& *(fp->w) <= cons*/ ; ) {
-    sp = find_preplace_badcutter (sp, fp->w);
-    tmp = fp->next;
-    if ( put_item (sp, fp) == 0 ) {
-    	fp->flag = NEW_ELEM;
-    	to->length++;
-    }
-    fp = tmp;
-    
-    /* if not sorted
-    if( tmp == NULL ){
-      to->length++;//cnt++;
-      tmp = fp->hh.next;//tmp = copyitem (fp);
-      HASH_ADD_KEYPTR (hh, to->items, fp->w, KNINT_SIZE, fp);
-      fp = tmp;
-    } else {
-      *(tmp->p) = MAXINT ( *(fp->p) , *(tmp->p) );
-      fp = fp->hh.next;
-    }*/
-    
-  }
   
   // pairwise addition
   item_t *lastelem, *preelem = NULL;
@@ -286,25 +237,62 @@ void dichosolve ( node_t* to, node_t* big, node_t* small, knint cons ) {
     } // for sp
     if ( fp->flag == ONESHOT_ELEM ) {
     	preelem->next = fp->next; // preelem isn't NULL cause ONESHOT_ELEM cann't be a first, see put_item().
-    	free_item (&fp);
+    	free_items (&fp);
     	fp = preelem;
     }
   } // for fp
 
+  // put new elements of second table or replace elements having less value
+  item_t *desert = createitems0(1);
+  lastelem = to->items;
+  fp = small->items;
+  small->items = small->items->next;
+  if ( (tmp = find_preplace_badcutter(lastelem,small->items->w)) == NULL ) {
+	fp->flag = NEW_ELEM;
+	to->items = fp;
+	to->items->next = lastelem;
+	lastelem = to->items;
+	to->length++;
+  } else {
+	if ( put_item (tmp, fp) == 0 ) {
+		fp->flag = NEW_ELEM;
+		lastelem = fp;
+		to->length++;
+	} else { // put_item drops fp
+		lastelem = tmp;
+		fp->next = desert->next;
+		desert->next = fp;
+	}
+  }
 
+  for( fp = small->items ; fp != NULL /*&& *(fp->w) <= cons*/ ; ) {
+    lastelem = find_preplace_badcutter (lastelem, fp->w);
+    tmp = fp->next;
+    if ( put_item (lastelem, fp) == 0 ) {
+    	fp->flag = NEW_ELEM;
+    	to->length++;
+    } else {
+    	fp->next = desert->next;
+	desert->next = fp;
+    }
+    fp = tmp;
+        
+  }
+  small->items = desert->next; // hold bad items
+  free_items (&desert);
+
+  // ----------------------- 2015-03-09[[]]]]]]]]]]][';';?
   // delete inefficient elems in tail
-	knint edge = *(lastelem->p);
+	knint edge;
 	do {
+		edge = *(lastelem->p);
 		while ( lastelem->next != NULL && edge >= *(lastelem->next->p) ) {
 			tmp = lastelem->next;
 			lastelem->next = lastelem->next->next;
 			free_items (&tmp);
 		}
 		
-		if ( lastelem->next != NULL ) {
-			lastelem = lastelem->next;
-			edge = *(lastelem->p);
-		} else break;
-	} while ( 1 );
+		lastelem = lastelem->next;
+	} while ( lastelem );
 
 } // dichosolve()

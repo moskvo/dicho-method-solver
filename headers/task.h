@@ -15,6 +15,10 @@
 
 #define MAXINT(x,y) ((x>y)?(x):(y))
 
+#define OLD_ELEM 0
+#define NEW_ELEM 1
+#define ONESHOT_ELEM 2
+
 /*-- item section --*/
 
 #define KNINT_LONG
@@ -42,8 +46,8 @@ void free_items (item_t**);
 void free_items_list (item_t**);
 
 int put_item (item_t*, item_t *);
-item_t* find_preplace (item_t*, item_t*);
-item_t* find_preplace_badcutter (item_t*, item_t*); // find preplace and cut bad items with inefficient payoffs
+item_t* find_preplace (item_t*, knint*);
+item_t* find_preplace_badcutter (item_t*, knint*); // find preplace and cut bad items with inefficient payoffs
 
 //-- task section ---
 

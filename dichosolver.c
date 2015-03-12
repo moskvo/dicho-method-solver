@@ -1,13 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "mpi.h"
+#include "dichosolver.h"
 
 #define NO_DEBUG 0
 #define LOW_DEBUG 1
 #define MID_DEBUG 2
 #define HI_DEBUG 3
 
-#define DBGLVL HI_DEBUG
+#define DBGLVL NO_DEBUG
 
 #define SIZE_MSG 100
 #define P_MSG 101
@@ -139,13 +140,15 @@ else {
     else {
       if ( root->items == NULL ) puts ("Wwarning! There's no items!");
       if ( root->items->p == NULL ) puts("Wwarning! There's no solutions!");
-      // sorting
+      /*// sorting
       #if DBGLVL >= MID_DEBUG
         puts("sorting..."); fflush(stdout);
       #endif
-      HASH_SORT ( root->items, value_sort );
+      HASH_SORT ( root->items, value_sort );*/
       // print it
-      printf ( "knapsack: (p=%ld w=%ld)\n", *(root->items->p), *(root->items->w) ); //fflush(stdout);
+      item_t *decis;
+      for ( decis = root->items ; decis->next != NULL ; decis = decis->next );
+      printf ( "knapsack: (p=%ld w=%ld)\n", *(decis->p), *(decis->w) ); //fflush(stdout);
     }
 
   }
@@ -158,18 +161,18 @@ else {
     if( root->length > 0 ){
       knint *p = (knint*)malloc(root->length*KNINT_SIZE), *w = (knint*)malloc(root->length*KNINT_SIZE), *pp, *pw;
       item_t *fp;
-      for ( fp = root->items, pp = p, pw = w ; fp != NULL ; fp = fp->hh.next, pp++, pw++ ){
+      for ( fp = root->items, pp = p, pw = w ; fp != NULL ; fp = fp->next, pp++, pw++ ){
         *pp = *(fp->p);
         *pw = *(fp->w);
       }
       // send p and w
-      MPI_Isend( p, root->length, MPI_KNINT, to, P_MSG, MPI_COMM_WORLD, reqp);
+      MPI_Isend ( p, root->length, MPI_KNINT, to, P_MSG, MPI_COMM_WORLD, reqp);
       //printf("%d send: ",myrank); print_items(root->length, root->items);
-      MPI_Isend( w, root->length, MPI_KNINT, to, W_MSG, MPI_COMM_WORLD, reqw);
-      MPI_Waitall(2,reqp,statp);
+      MPI_Isend ( w, root->length, MPI_KNINT, to, W_MSG, MPI_COMM_WORLD, reqw);
+      MPI_Waitall (2,reqp,statp);
       free(p); free(w);
     }
-    MPI_Wait(reqsz,statsz);
+    MPI_Wait (reqsz,statsz);
 
   } // else of if myrank == 0
 
@@ -212,15 +215,20 @@ node_t* receive_brother(int from, node_t *root, int *cnt, MPI_Status *stat){
     knint *p = (knint*)malloc(thead->length*KNINT_SIZE), *w = (knint*)malloc(thead->length*KNINT_SIZE), *pp, *ww;
     MPI_Recv(p, thead->length, MPI_KNINT, from, P_MSG, MPI_COMM_WORLD, stat);
     MPI_Recv(w, thead->length, MPI_KNINT, from, W_MSG, MPI_COMM_WORLD, stat);
-    thead->items = NULL;
-    item_t *it = createitems(1);
+    item_t *it = createitems(1), *pre;
+    thead->items = it;
+    
     for ( pp = p, ww = w ; pp < p + thead->length ; pp++, ww++ ) {
       *(it->p) = *pp;
       *(it->w) = *ww;
-      HASH_ADD_KEYPTR (hh, thead->items, it->w, KNINT_SIZE, it);
-      it = copyitem (it);
+      //HASH_ADD_KEYPTR (hh, thead->items, it->w, KNINT_SIZE, it);
+      pre = it;
+      it = copyitem (pre);
+      pre->next = it;
     }
     thead->source = from;
+    pre->next = NULL;
+    free_items (&it);
     free(p); free(w);
   } else {
     thead->source = -1;
