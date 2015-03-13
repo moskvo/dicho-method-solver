@@ -243,6 +243,7 @@ void dichosolve ( node_t* to, node_t* big, node_t* small, knint cons ) {
   } // for fp
 
   puts("put new elements of second table or replace elements having less value");fflush(stdout);
+// after this error fireup
   item_t *desert = createitems0(1);
   lastelem = to->items;
   fp = small->items;
