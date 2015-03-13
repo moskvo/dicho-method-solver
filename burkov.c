@@ -222,18 +222,26 @@ void dichosolve ( node_t* to, node_t* big, node_t* small, knint cons ) {
   knint w, p;
   
   puts ("dichosolve. pairwise addition"); fflush(stdout);
-  // pairwise addition
   item_t *lastelem, *preelem = NULL;
   for( fp = to->items ; fp != NULL ; preelem = fp, fp = fp->next ) {
     if ( fp->flag == NEW_ELEM ) { fp->flag = OLD_ELEM; continue; }
     lastelem = fp;
+    puts("before for"); fflush(stdout);
     for( sp = small->items ; sp != NULL && (p = *(fp->p) + *(sp->p), w = *(fp->w) + *(sp->w), w<=cons) ; sp = sp->next ) {
+	printf ("lastelemw=%ld w=%ld\n",*(lastelem->w),w);
     	lastelem = find_preplace_badcutter (lastelem,&w, &(to->length));
+	if ( lastelem == NULL ) { 
+		puts("lastelem null!");
+		printf("w=%ld, preelemw=%ld, fpw=%ld\n",w,*(preelem->w), w-*(sp->w));
+		fflush(stdout);
+	}
     	tmp = copyitem (lastelem);
     	*(tmp->p) = p;
     	*(tmp->w) = w;
+	puts("before put_item"); fflush(stdout);
     	put_item (lastelem, &tmp, &(to->length));
     } // for sp
+    puts("after for"); fflush(stdout);
     if ( fp->flag == ONESHOT_ELEM ) {
     	preelem->next = fp->next; // preelem isn't NULL cause ONESHOT_ELEM cann't be a first, see put_item().
     	free_items (&fp);
@@ -243,17 +251,26 @@ void dichosolve ( node_t* to, node_t* big, node_t* small, knint cons ) {
   } // for fp
 
   puts("put new elements of second table or replace elements having less value");fflush(stdout);
-// after this error fireup
   item_t *desert = createitems0(1);
   lastelem = to->items;
   fp = small->items;
   small->items = small->items->next;
-  if ( (tmp = find_preplace_badcutter(lastelem, small->items->w, &(to->length))) == NULL ) {
-	fp->flag = OLD_ELEM;
-	to->items = fp;
-	to->items->next = lastelem;
-	lastelem = to->items;
-	to->length++;
+  if ( (tmp = find_preplace_badcutter(lastelem, fp->w, &(to->length))) == NULL ) {
+	if ( *(to->items->w) == *(fp->w) ) {
+		if ( *(to->items->p) < *(fp->p) ) {
+			*(to->items->p) = *(fp->p);
+			free_items (&fp);
+		} else {
+			fp->next = desert->next;
+			desert->next = fp;
+		}
+	} else { // Put fp to first place
+		fp->flag = OLD_ELEM;
+		to->items = fp;
+		to->items->next = lastelem;
+		lastelem = to->items;
+		to->length++;
+	}
   } else {
 	if ( safe_put_item (tmp, &fp, &(to->length)) == 0 ) {
 		fp->flag = OLD_ELEM;
@@ -281,7 +298,7 @@ void dichosolve ( node_t* to, node_t* big, node_t* small, knint cons ) {
   small->items = desert->next; // hold bad items (unsorted?)
   free_items (&desert);
 
-  puts("// delete inefficient elems in tail");fflush(stdout);
+  puts("delete inefficient elems in tail");fflush(stdout);
 	knint edge;
 	do {
 		edge = *(lastelem->p);

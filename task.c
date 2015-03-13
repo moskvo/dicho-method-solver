@@ -197,14 +197,14 @@ int safe_put_item (item_t *preplace, item_t **item, int *listlen) {
 }
 
 item_t* find_preplace (item_t *list, knint *itemw) {
-	if ( *(list->w) > *itemw ) return NULL;
+	if ( *(list->w) >= *itemw ) return NULL;
 	for ( ; list->next != NULL && *(list->next->w) < *itemw ; list = list->next );
 	return list;
 }
 
 // find preplace and cut bad items with inefficient payoffs
 item_t* find_preplace_badcutter (item_t *list, knint *itemw, int *listlen) {
-	if ( *(list->w) > *itemw ) return NULL;
+	if ( *(list->w) >= *itemw ) return NULL;
 	knint edge = *(list->p);
 	item_t *tmp;
 	do {
@@ -219,7 +219,7 @@ item_t* find_preplace_badcutter (item_t *list, knint *itemw, int *listlen) {
 				if ( list->next->flag == OLD_ELEM ) {
 					list->next->flag = ONESHOT_ELEM;
 				}
-				list = list->next;
+				break;//list = list->next;
 			}
 		}// while
 			
