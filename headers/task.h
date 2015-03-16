@@ -81,4 +81,7 @@ void print_node ( char*, node_t* );
 void free_tree ( node_t* ) ;
 void free_node ( node_t* ) ;
 
+void clean_tree (node_t*);
+void clean_node (node_t*);
+
 #endif

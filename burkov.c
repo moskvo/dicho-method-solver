@@ -184,10 +184,10 @@ void notrecursive_treesolver ( node_t* root, knint cons ){
 	//clear_node (runner->lnode);
         //clear_node (runner->rnode);
 
-  	printf ( "depth = %d. right length = %d, left length = %d\n", depth, runner->rnode->length, runner->lnode->length ); 
+  	//printf ( "depth = %d. right length = %d, left length = %d\n", depth, runner->rnode->length, runner->lnode->length ); 
   	//print_hash (runner->rnode->items);
   	//print_hash (runner->lnode->items);
-  	fflush (stdout);
+  	//fflush (stdout);
 
   	runner = runner->hnode;
   	depth--;
@@ -221,27 +221,27 @@ void dichosolve ( node_t* to, node_t* big, node_t* small, knint cons ) {
   item_t *fp, *sp, *tmp;
   knint w, p;
   
-  puts ("dichosolve. pairwise addition"); fflush(stdout);
+  //puts ("dichosolve. pairwise addition"); fflush(stdout);
   item_t *lastelem, *preelem = NULL;
   for( fp = to->items ; fp != NULL ; preelem = fp, fp = fp->next ) {
     if ( fp->flag == NEW_ELEM ) { fp->flag = OLD_ELEM; continue; }
     lastelem = fp;
-    puts("before for"); fflush(stdout);
+    //puts("before for"); fflush(stdout);
     for( sp = small->items ; sp != NULL && (p = *(fp->p) + *(sp->p), w = *(fp->w) + *(sp->w), w<=cons) ; sp = sp->next ) {
-	printf ("lastelemw=%ld w=%ld\n",*(lastelem->w),w);
+	//printf ("lastelemw=%ld w=%ld\n",*(lastelem->w),w);
     	lastelem = find_preplace_badcutter (lastelem,&w, &(to->length));
 	if ( lastelem == NULL ) { 
 		puts("lastelem null!");
-		printf("w=%ld, preelemw=%ld, fpw=%ld\n",w,*(preelem->w), w-*(sp->w));
+		//printf("w=%ld, preelemw=%ld, fpw=%ld\n",w,*(preelem->w), w-*(sp->w));
 		fflush(stdout);
 	}
     	tmp = copyitem (lastelem);
     	*(tmp->p) = p;
     	*(tmp->w) = w;
-	puts("before put_item"); fflush(stdout);
+	//puts("before put_item"); fflush(stdout);
     	put_item (lastelem, &tmp, &(to->length));
     } // for sp
-    puts("after for"); fflush(stdout);
+    //puts("after for"); fflush(stdout);
     if ( fp->flag == ONESHOT_ELEM ) {
     	preelem->next = fp->next; // preelem isn't NULL cause ONESHOT_ELEM cann't be a first, see put_item().
     	free_items (&fp);
@@ -250,7 +250,7 @@ void dichosolve ( node_t* to, node_t* big, node_t* small, knint cons ) {
     }
   } // for fp
 
-  puts("put new elements of second table or replace elements having less value");fflush(stdout);
+  //puts("put new elements of second table or replace elements having less value");fflush(stdout);
   item_t *desert = createitems0(1);
   lastelem = to->items;
   fp = small->items;
@@ -282,7 +282,7 @@ void dichosolve ( node_t* to, node_t* big, node_t* small, knint cons ) {
 	}
   }
 
-  puts ("cycle"); fflush(stdout);
+  //puts ("cycle"); fflush(stdout);
   for( fp = small->items ; fp != NULL /*&& *(fp->w) <= cons*/ ; ) {
     lastelem = find_preplace_badcutter (lastelem, fp->w, &(to->length));
     tmp = fp->next;
@@ -298,7 +298,7 @@ void dichosolve ( node_t* to, node_t* big, node_t* small, knint cons ) {
   small->items = desert->next; // hold bad items (unsorted?)
   free_items (&desert);
 
-  puts("delete inefficient elems in tail");fflush(stdout);
+  //puts("delete inefficient elems in tail");fflush(stdout);
 	knint edge;
 	do {
 		edge = *(lastelem->p);

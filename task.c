@@ -376,3 +376,24 @@ void free_tree (node_t *root){
   	}
   }// while
 }// free_tree
+
+void clean_tree (node_t *root) {
+  node_t *runner = root;
+  int lastjump; // 0 - to left, 1 - to right
+  while ( runner != NULL ) {
+  	while ( (runner->rnode != NULL) || (runner->lnode != NULL) ) {
+  		while ( runner->rnode != NULL ) { runner = runner->rnode; lastjump = 1; }
+  		while ( runner->lnode != NULL ) { runner = runner->lnode; lastjump = 0; }
+  	}
+  	clean_node (runner);
+  	runner = runner->hnode;
+  	if ( runner != NULL ) {
+  		if ( lastjump == 0 ) runner->lnode = NULL;
+  		else runner->rnode = NULL;
+  	}
+  }// while	
+}
+
+void clean_node (node_t* node){
+  free_items_list (&(node->items));
+}

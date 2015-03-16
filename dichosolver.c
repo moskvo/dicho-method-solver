@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include "mpi.h"
 #include "dichosolver.h"
 
@@ -22,6 +23,9 @@
 #endif
 
 int main(int argc, char** argv){
+	time_t clock1,clock2;
+	clock1 = time(NULL);
+
   // mpi headers
   MPI_Init (&argc, &argv);
   int groupsize, myrank;
@@ -140,15 +144,14 @@ else {
     else {
       if ( root->items == NULL ) puts ("Wwarning! There's no items!");
       if ( root->items->p == NULL ) puts("Wwarning! There's no solutions!");
-      /*// sorting
-      #if DBGLVL >= MID_DEBUG
-        puts("sorting..."); fflush(stdout);
-      #endif
-      HASH_SORT ( root->items, value_sort );*/
       // print it
       item_t *decis;
       for ( decis = root->items ; decis->next != NULL ; decis = decis->next );
       printf ( "knapsack: (p=%ld w=%ld)\n", *(decis->p), *(decis->w) ); //fflush(stdout);
+
+	clock2 = time(NULL);
+	printf ("Elapsed time: %ld sec\n", clock2-clock1);
+
     }
 
   }
@@ -180,16 +183,20 @@ else {
   printf ("%d: finalizing...\n",myrank); fflush (stdout);
   #endif
 
+  /*
   #if DBGLVL >= LOW_DEBUG
   puts ("free tree"); fflush(stdout);
   #endif
+  clean_tree (root);
+
   node_t *t;
   for( ; cnt > 0 ; cnt-- ){
     t = root;
     root = root->lnode;
-    free_node (t);
+    free (t);
   }
-  free (root);//free_tree (root);
+  
+  free (root); //free_tree (root);
 
   #if DBGLVL >= LOW_DEBUG
     puts ("free some var"); fflush(stdout);
@@ -197,7 +204,7 @@ else {
   free_task(&mytask);
   free(msgreq);
   free(msgstat);
-
+  */
   #if DBGLVL >= LOW_DEBUG
   	printf("%d: ok\n", myrank); fflush (stdout);
   #endif
@@ -207,7 +214,8 @@ else {
 } // main()
 
 node_t* receive_brother(int from, node_t *root, int *cnt, MPI_Status *stat){
-  node_t *head = (root == NULL) ? createnodes(1) : createnodes(2), *thead = (root==NULL)?(head):(head+1);
+  node_t *head = (root==NULL)?createnodes(1):createnodes(2),
+  	*thead = (root==NULL)?head:(head+1);
 
   MPI_Recv(&(thead->length), 1, MPI_INT, from, SIZE_MSG, MPI_COMM_WORLD, stat);
 
@@ -226,22 +234,24 @@ node_t* receive_brother(int from, node_t *root, int *cnt, MPI_Status *stat){
       it = copyitem (pre);
       pre->next = it;
     }
-    thead->source = from;
     pre->next = NULL;
     free_items (&it);
     free(p); free(w);
+
+    thead->source = from;
   } else {
     thead->source = -1;
   }
 
-  (*cnt)++;
 
   if ( root != NULL ) {
+      (*cnt)++;
       head->lnode = root;
       head->rnode = thead;
       root->hnode = head;
       thead->hnode = head;
   }
+  head->hnode = NULL;
 
   return head;
 }
