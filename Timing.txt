@@ -1,5 +1,8 @@
 sample30.txt - 3 nodes ~ 0 sec
 sample300.txt - 3 nodes ~ 0 sec
+
 sampleLAZ20.txt - 3 nodes ~ 1 sec
 sampleLAZ30.txt - 8 nodes ~
 sampleLAZ35.txt - 8 nodes > 1 hour
+
+n=100000_C=0.6.txt - 11 nodes = 87740 sec ~ 24 hours
